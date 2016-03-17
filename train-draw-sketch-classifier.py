@@ -162,20 +162,23 @@ print()
 
 encoder_rnn = LSTM(dim=enc_dim, name="RNN_enc", **rnninits)
 decoder_rnn = LSTM(dim=dec_dim, name="RNN_dec", **rnninits)
-encoder_mlp = MLP([Identity()], [(260), 4*enc_dim], name="MLP_enc", **inits)
+encoder_mlp = MLP([Identity()], [(read_dim+dec_dim), 4*enc_dim], name="MLP_enc", **inits) #260
 decoder_mlp = MLP([Identity()], [             dec_dim, 4*dec_dim], name="MLP_dec", **inits)
 #classifier_mlp = MLP([Rectifier(), Logistic()], [dec_dim, z_dim, 1], name="classifier", **inits) 
 #classifier_mlp = MLP([Tanh(), Logistic()], [dec_dim, z_dim, 1], name="classifier", **inits) 
 #classifier_mlp = MLP([Tanh(), Softmax()], [dec_dim, z_dim, 1], name="classifier", **inits) 
-classifier_mlp = MLP([Logistic()], [dec_dim, 1], name="classifier", **inits) 
+classifier_mlp = MLP([Logistic()], [4*dec_dim, 1], name="classifier", **inits) 
 
 q_sampler = Qsampler(input_dim=enc_dim, output_dim=z_dim, **inits)
 
 draw = DrawClassifierModel(
             n_iter, 
             reader=reader,
+            writer=writer,
             encoder_mlp=encoder_mlp,
             encoder_rnn=encoder_rnn,
+            decoder_mlp = decoder_mlp,
+            decoder_rnn = decoder_rnn,
             sampler = q_sampler,
             classifier=classifier_mlp)
 draw.initialize()
@@ -185,8 +188,8 @@ draw.initialize()
 x = tensor.matrix(u'features')
 y = tensor.lmatrix(u'targets')
 #y = theano.tensor.extra_ops.to_one_hot(tensor.lmatrix(u'targets'),2)
-
-probs, h_enc, c_enc, center_y, center_x, delta = draw.reconstruct(x)
+probs, h_enc, c_enc, h_dec, c_dec, center_y, center_x, delta = draw.reconstruct(x)
+#probs, h_enc, c_enc, center_y, center_x, delta = draw.reconstruct(x)
 #trim_probs = probs[-1,:] #Only take information from the last iteration
 trim_probs = probs #Only take information from the last iteration
 labels = y
