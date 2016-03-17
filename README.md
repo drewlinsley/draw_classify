@@ -129,3 +129,4 @@ A window displaying the original input image, a window displaying some
 extracted, downsampled content (testing the read-operation), and a window
 showing the upsampled content (matching the input size) after the write
 operation.
+# draw_classify
