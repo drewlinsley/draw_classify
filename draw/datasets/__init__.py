@@ -13,6 +13,13 @@ def get_data(data_name):
         data_train = MNIST(which_sets=["train"], sources=['features'])
         data_valid = MNIST(which_sets=["test"], sources=['features'])
         data_test  = MNIST(which_sets=["test"], sources=['features'])
+    elif data_name == 'sketch':
+	from fuel.datasets.hdf5 import H5PYDataset
+	img_size = (32, 32)
+	channels = 1
+	data_train = H5PYDataset('/Users/drewlinsley/Documents/draw/draw/datasets/sketch/sketch.hdf5', which_sets=('train',))
+        data_test = H5PYDataset('/Users/drewlinsley/Documents/draw/draw/datasets/sketch/sketch.hdf5', which_sets=('test',))
+        data_valid = H5PYDataset('/Users/drewlinsley/Documents/draw/draw/datasets/sketch/sketch.hdf5', which_sets=('test',))
     elif data_name == 'bmnist':
         from fuel.datasets.binarized_mnist import BinarizedMNIST
         img_size = (28, 28)
