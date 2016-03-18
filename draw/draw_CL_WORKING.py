@@ -303,7 +303,7 @@ class DrawClassifierModel(BaseRecurrent, Initializable, Random):
             return self.encoder_rnn.get_dim('states')
         elif name == 'c_enc':
             return self.encoder_rnn.get_dim('cells')
-        if name == 'h_dec':
+        elif name == 'h_dec':
             return self.decoder_rnn.get_dim('states')
         elif name == 'c_dec':
             return self.decoder_rnn.get_dim('cells')

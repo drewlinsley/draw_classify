@@ -191,13 +191,17 @@ class AttentionReader(Initializable):
 
     @application(inputs=['x', 'h_dec'], outputs=['r','center_y', 'center_x', 'delta'])
     def apply_simple(self, x, h_dec):
+        #l = self.readout.apply(h_dec)
+
+        #center_y, center_x, delta, sigma, gamma = self.zoomer.nn2att(l)
+
+        #r     = gamma * self.zoomer.read(x    , center_y, center_x, delta, sigma)
+
         l = self.readout.apply(h_dec)
-
         center_y, center_x, delta, sigma, gamma = self.zoomer.nn2att(l)
-
         r     = gamma * self.zoomer.read(x    , center_y, center_x, delta, sigma)
 
-        return r, center_y, center_x, delta
+        return r,center_y,center_x,delta
 
 #-----------------------------------------------------------------------------
 
@@ -271,6 +275,17 @@ class AttentionWriter(Initializable):
 
         return c_update, center_y, center_x, delta
 
+    @application(inputs=['h'], outputs=['c_update', 'center_y', 'center_x', 'delta'])
+    def apply_circular(self, h,x):
+        #w = self.w_trafo.apply(h)
+        l = self.z_trafo.apply(h)
+
+        center_y, center_x, delta, sigma, gamma = self.zoomer.nn2att(l)
+
+        c_update = 1./gamma * self.zoomer.write(x, center_y, center_x, delta, sigma)
+
+        return c_update, center_y, center_x, delta
+
 
 
 #-----------------------------------------------------------------------------
@@ -319,10 +334,14 @@ class DrawClassifierModel(BaseRecurrent, Initializable, Random):
                outputs=['c', 'h_enc', 'c_enc', 'center_y', 'center_x', 'delta', 'r'])
     def apply(self, u, c, h_enc, c_enc, x):
         #r,center_y,center_x,delta = self.reader.apply_simple(x, r, h_dec)
-        x_hat = x-T.nnet.sigmoid(c) #feed in previous read
+        
+        #x_hat = x-T.nnet.sigmoid(c) #feed in previous read
 
         #r = self.reader.apply(x, x_hat, h_dec)
-        r,center_y,center_x,delta = self.reader.apply_detailed(x, x_hat, h_enc)
+        #r,center_y,center_x,delta = self.reader.apply_detailed(x, x_hat, h_enc)
+
+        r,center_y,center_x,delta = self.reader.apply_simple(x, h_enc)
+
         #r,center_y,center_x,delta = self.reader.apply(x, r, h_dec)
         i_enc = self.encoder_mlp.apply(T.concatenate([r, h_enc], axis=1))
         h_enc, c_enc = self.encoder_rnn.apply(states=h_enc, cells=c_enc, inputs=i_enc, iterate=False)
@@ -333,8 +352,8 @@ class DrawClassifierModel(BaseRecurrent, Initializable, Random):
         #h_dec, c_dec = self.decoder_rnn.apply(states=h_dec, cells=c_dec, inputs=i_dec, iterate=False)
         #
 
-        #c = self.classifier.apply(h_dec)
         #c = c + self.writer.apply(h_dec)
+        #c = self.writer.apply(h_dec)
         c = c + self.writer.apply(h_enc)
 
         return c, h_enc, c_enc, center_y, center_x, delta, r
@@ -422,7 +441,8 @@ class DrawModel(BaseRecurrent, Initializable, Random):
 
         i_dec = self.decoder_mlp.apply(z)
         h_dec, c_dec = self.decoder_rnn.apply(states=h_dec, cells=c_dec, inputs=i_dec, iterate=False)
-        c = c + self.writer.apply(h_dec)
+        #c = c + self.writer.apply(h_dec)
+        c = c + self.writer.circular(h_dec,x)
         return c, h_enc, c_enc, z, kl, i_dec, h_dec, c_dec, center_y, center_x, delta
 
     @recurrent(sequences=['u'], contexts=[], 

@@ -53,7 +53,7 @@ epochs = 100
 batch_size = 200
 learning_rate = 3e-4
 attention = '2,5'
-n_iter = 32
+n_iter = 16
 enc_dim = 256
 dec_dim = 256
 z_dim = 100
@@ -161,9 +161,10 @@ print()
 
 
 encoder_rnn = LSTM(dim=enc_dim, name="RNN_enc", **rnninits)
-decoder_rnn = LSTM(dim=dec_dim, name="RNN_dec", **rnninits)
-encoder_mlp = MLP([Identity()], [(read_dim+dec_dim), 4*enc_dim], name="MLP_enc", **inits) #260
-decoder_mlp = MLP([Identity()], [             dec_dim, 4*dec_dim], name="MLP_dec", **inits)
+encoder_mlp = MLP([Identity()], [(260), 4*enc_dim], name="MLP_enc", **inits) #260
+#decoder_rnn = LSTM(dim=dec_dim, name="RNN_dec", **rnninits)
+#decoder_mlp = MLP([Identity()], [             dec_dim, 4*dec_dim], name="MLP_dec", **inits)
+
 #classifier_mlp = MLP([Rectifier(), Logistic()], [dec_dim, z_dim, 1], name="classifier", **inits) 
 #classifier_mlp = MLP([Tanh(), Logistic()], [dec_dim, z_dim, 1], name="classifier", **inits) 
 #classifier_mlp = MLP([Tanh(), Softmax()], [dec_dim, z_dim, 1], name="classifier", **inits) 
