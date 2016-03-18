@@ -53,7 +53,7 @@ epochs = 100
 batch_size = 200
 learning_rate = 3e-4
 attention = '2,5'
-n_iter = 16
+n_iter = 32
 enc_dim = 256
 dec_dim = 256
 z_dim = 100
@@ -167,7 +167,7 @@ decoder_mlp = MLP([Identity()], [             dec_dim, 4*dec_dim], name="MLP_dec
 #classifier_mlp = MLP([Rectifier(), Logistic()], [dec_dim, z_dim, 1], name="classifier", **inits) 
 #classifier_mlp = MLP([Tanh(), Logistic()], [dec_dim, z_dim, 1], name="classifier", **inits) 
 #classifier_mlp = MLP([Tanh(), Softmax()], [dec_dim, z_dim, 1], name="classifier", **inits) 
-classifier_mlp = MLP([Logistic()], [4*dec_dim, 1], name="classifier", **inits) 
+classifier_mlp = MLP([Identity(),Logistic()], [4*dec_dim, z_dim, 1], name="classifier", **inits) 
 
 q_sampler = Qsampler(input_dim=enc_dim, output_dim=z_dim, **inits)
 

@@ -342,6 +342,7 @@ class DrawClassifierModel(BaseRecurrent, Initializable, Random):
         i_dec = self.decoder_mlp.apply(h_enc)
         h_dec, c_dec = self.decoder_rnn.apply(states=h_dec, cells=c_dec, inputs=i_dec, iterate=False)
         #c = self.classifier.apply(h_dec)
+        #c = c + self.writer.apply(h_dec)
         c = c + self.writer.apply(h_dec)
 
         return c, h_enc, c_enc, h_dec, c_dec, center_y, center_x, delta, r
