@@ -26,7 +26,7 @@ from fuel.transformers import Flatten
 
 from blocks.algorithms import GradientDescent, CompositeRule, StepClipping, RMSProp, Adam
 from blocks.bricks import Tanh, Identity, Softmax, Rectifier, Logistic
-from blocks.bricks.cost import BinaryCrossEntropy, CategoricalCrossEntropy, MisclassificationRate
+from blocks.bricks.cost import BinaryCrossEntropy, CategoricalCrossEntropy, MisclassificationRate, SquaredError
 from blocks.bricks.recurrent import SimpleRecurrent, LSTM
 from blocks.initialization import Constant, IsotropicGaussian, Orthogonal 
 from blocks.filter import VariableFilter
@@ -48,12 +48,12 @@ from draw.partsonlycheckpoint import PartsOnlyCheckpoint
 sys.setrecursionlimit(100000)
 
 #----------------------------------------------------------------------------
-name = 'class_test'
+name = 'new_class_test'
 epochs = 100
-batch_size = 100
+batch_size = 200
 learning_rate = 3e-4
 attention = '2,5'
-n_iter = 16
+n_iter = 32
 enc_dim = 256
 dec_dim = 256
 z_dim = 100
@@ -162,21 +162,24 @@ print()
 
 encoder_rnn = LSTM(dim=enc_dim, name="RNN_enc", **rnninits)
 decoder_rnn = LSTM(dim=dec_dim, name="RNN_dec", **rnninits)
-encoder_mlp = MLP([Identity()], [(260), 4*enc_dim], name="MLP_enc", **inits)
+encoder_mlp = MLP([Identity()], [(read_dim+dec_dim), 4*enc_dim], name="MLP_enc", **inits) #260
 decoder_mlp = MLP([Identity()], [             dec_dim, 4*dec_dim], name="MLP_dec", **inits)
 #classifier_mlp = MLP([Rectifier(), Logistic()], [dec_dim, z_dim, 1], name="classifier", **inits) 
-classifier_mlp = MLP([Tanh(), Logistic()], [dec_dim, z_dim, 1], name="classifier", **inits) 
+#classifier_mlp = MLP([Tanh(), Logistic()], [dec_dim, z_dim, 1], name="classifier", **inits) 
+#classifier_mlp = MLP([Tanh(), Softmax()], [dec_dim, z_dim, 1], name="classifier", **inits) 
+classifier_mlp = MLP([Identity(),Logistic()], [4*dec_dim, z_dim, 1], name="classifier", **inits) 
 
 q_sampler = Qsampler(input_dim=enc_dim, output_dim=z_dim, **inits)
 
 draw = DrawClassifierModel(
             n_iter, 
             reader=reader,
+            writer=writer,
             encoder_mlp=encoder_mlp,
             encoder_rnn=encoder_rnn,
+            decoder_mlp = decoder_mlp,
+            decoder_rnn = decoder_rnn,
             sampler = q_sampler,
-            decoder_mlp=decoder_mlp,
-            decoder_rnn=decoder_rnn,
             classifier=classifier_mlp)
 draw.initialize()
 
@@ -185,11 +188,13 @@ draw.initialize()
 x = tensor.matrix(u'features')
 y = tensor.lmatrix(u'targets')
 #y = theano.tensor.extra_ops.to_one_hot(tensor.lmatrix(u'targets'),2)
-
-probs, h_enc, c_enc, i_dec, h_dec, c_dec, center_y, center_x, delta = draw.reconstruct(x)
-trim_probs = probs[-1,:] #Only take information from the last iteration
+probs, h_enc, c_enc, h_dec, c_dec, center_y, center_x, delta = draw.reconstruct(x)
+#probs, h_enc, c_enc, center_y, center_x, delta = draw.reconstruct(x)
+#trim_probs = probs[-1,:] #Only take information from the last iteration
+trim_probs = probs #Only take information from the last iteration
 labels = y
 cost = BinaryCrossEntropy().apply(labels, trim_probs)
+#cost = SquaredError().apply(labels,trim_probs)
 #cost = AbsoluteError().apply(tensor.concatenate([center_y, center_x, deltaY, deltaX]), tensor.concatenate([orig_y, orig_x, orig_dy, orig_dx]))
 #cost = (CategoricalCrossEntropy().apply(labels, trim_probs).copy(name='cost'))
 #cost = tensor.nnet.categorical_crossentropy(trim_probs, labels)

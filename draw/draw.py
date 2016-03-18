@@ -278,7 +278,7 @@ class AttentionWriter(Initializable):
 
 class DrawClassifierModel(BaseRecurrent, Initializable, Random):
     def __init__(self, n_iter, reader, 
-                    encoder_mlp, encoder_rnn, decoder_mlp, decoder_rnn, sampler,
+                    encoder_mlp, encoder_rnn, sampler,
                     classifier, writer, **kwargs):
         super(DrawClassifierModel, self).__init__(**kwargs)   
         self.n_iter = n_iter
@@ -286,14 +286,12 @@ class DrawClassifierModel(BaseRecurrent, Initializable, Random):
         self.reader = reader
         self.encoder_mlp = encoder_mlp 
         self.encoder_rnn = encoder_rnn
-        self.decoder_mlp = decoder_mlp 
-        self.decoder_rnn = decoder_rnn
         self.sampler = sampler
         self.writer = writer
         self.classifier = classifier
 
         self.children = [self.reader, self.encoder_mlp, self.encoder_rnn,
-        self.decoder_mlp, self.decoder_rnn, self.sampler, self.writer,
+        self.sampler, self.writer,
                          self.classifier]
  
     def get_dim(self, name):
@@ -302,10 +300,6 @@ class DrawClassifierModel(BaseRecurrent, Initializable, Random):
         elif name == 'h_enc':
             return self.encoder_rnn.get_dim('states')
         elif name == 'c_enc':
-            return self.encoder_rnn.get_dim('cells')
-        if name == 'h_dec':
-            return self.encoder_rnn.get_dim('states')
-        elif name == 'c_dec':
             return self.encoder_rnn.get_dim('cells')
         elif name in ['z', 'z_mean', 'z_log_sigma']:
             return self.sampler.get_dim('output')
@@ -321,14 +315,14 @@ class DrawClassifierModel(BaseRecurrent, Initializable, Random):
     #------------------------------------------------------------------------
 
     @recurrent(sequences=['u'], contexts=['x'], 
-               states=['h_enc', 'c_enc', 'h_dec', 'c_dec', 'c'],
-               outputs=['c', 'h_enc', 'c_enc', 'h_dec', 'c_dec', 'center_y', 'center_x', 'delta', 'r'])
-    def apply(self, u, c, h_enc, c_enc, h_dec, c_dec, x):
+               states=['h_enc', 'c_enc', 'c'],
+               outputs=['c', 'h_enc', 'c_enc', 'center_y', 'center_x', 'delta', 'r'])
+    def apply(self, u, c, h_enc, c_enc, x):
         #r,center_y,center_x,delta = self.reader.apply_simple(x, r, h_dec)
         x_hat = x-T.nnet.sigmoid(c) #feed in previous read
 
         #r = self.reader.apply(x, x_hat, h_dec)
-        r,center_y,center_x,delta = self.reader.apply_detailed(x, x_hat, h_dec)
+        r,center_y,center_x,delta = self.reader.apply_detailed(x, x_hat, h_enc)
         #r,center_y,center_x,delta = self.reader.apply(x, r, h_dec)
         i_enc = self.encoder_mlp.apply(T.concatenate([r, h_enc], axis=1))
         h_enc, c_enc = self.encoder_rnn.apply(states=h_enc, cells=c_enc, inputs=i_enc, iterate=False)
@@ -339,19 +333,17 @@ class DrawClassifierModel(BaseRecurrent, Initializable, Random):
         #h_dec, c_dec = self.decoder_rnn.apply(states=h_dec, cells=c_dec, inputs=i_dec, iterate=False)
         #
 
-        i_dec = self.decoder_mlp.apply(h_enc)
-        h_dec, c_dec = self.decoder_rnn.apply(states=h_dec, cells=c_dec, inputs=i_dec, iterate=False)
         #c = self.classifier.apply(h_dec)
         #c = c + self.writer.apply(h_dec)
-        c = c + self.writer.apply(h_dec)
+        c = c + self.writer.apply(h_enc)
 
-        return c, h_enc, c_enc, h_dec, c_dec, center_y, center_x, delta, r
+        return c, h_enc, c_enc, center_y, center_x, delta, r
 
 
 
     #------------------------------------------------------------------------
 
-    @application(inputs=['features'], outputs=['c', 'h_enc', 'c_enc', 'h_dec', 'c_dec', 'center_y', 'center_x', 'delta'])
+    @application(inputs=['features'], outputs=['c', 'h_enc', 'c_enc', 'center_y', 'center_x', 'delta'])
     def reconstruct(self, features):
         batch_size = features.shape[0]
         dim_z = self.get_dim('z')
@@ -361,12 +353,12 @@ class DrawClassifierModel(BaseRecurrent, Initializable, Random):
                     size=(self.n_iter, batch_size, dim_z),
                     avg=0., std=1.)
 
-        c, h_enc, c_enc, h_dec, c_dec, center_y, center_x, delta, r = \
+        c, h_enc, c_enc, center_y, center_x, delta, r = \
             rvals = self.apply(x=features, u=u)
 
         #c = self.classifier.apply(c)
         c = self.classifier.apply(T.nnet.sigmoid(c[-1,:,:]))
-        return c, h_enc, c_enc, h_dec, c_dec, center_y, center_x, delta
+        return c, h_enc, c_enc, center_y, center_x, delta
 
 
 

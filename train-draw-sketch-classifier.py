@@ -177,8 +177,6 @@ draw = DrawClassifierModel(
             writer=writer,
             encoder_mlp=encoder_mlp,
             encoder_rnn=encoder_rnn,
-            decoder_mlp = decoder_mlp,
-            decoder_rnn = decoder_rnn,
             sampler = q_sampler,
             classifier=classifier_mlp)
 draw.initialize()
@@ -188,13 +186,13 @@ draw.initialize()
 x = tensor.matrix(u'features')
 y = tensor.lmatrix(u'targets')
 #y = theano.tensor.extra_ops.to_one_hot(tensor.lmatrix(u'targets'),2)
-probs, h_enc, c_enc, h_dec, c_dec, center_y, center_x, delta = draw.reconstruct(x)
+probs, h_enc, c_enc, center_y, center_x, delta = draw.reconstruct(x)
 #probs, h_enc, c_enc, center_y, center_x, delta = draw.reconstruct(x)
 #trim_probs = probs[-1,:] #Only take information from the last iteration
 trim_probs = probs #Only take information from the last iteration
 labels = y
-#cost = BinaryCrossEntropy().apply(labels, trim_probs)
-cost = SquaredError().apply(labels,trim_probs)
+cost = BinaryCrossEntropy().apply(labels, trim_probs)
+#cost = SquaredError().apply(labels,trim_probs)
 #cost = AbsoluteError().apply(tensor.concatenate([center_y, center_x, deltaY, deltaX]), tensor.concatenate([orig_y, orig_x, orig_dy, orig_dx]))
 #cost = (CategoricalCrossEntropy().apply(labels, trim_probs).copy(name='cost'))
 #cost = tensor.nnet.categorical_crossentropy(trim_probs, labels)
