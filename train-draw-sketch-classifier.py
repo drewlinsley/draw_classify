@@ -21,7 +21,7 @@ from argparse import ArgumentParser
 from theano import tensor
 
 from fuel.streams import DataStream
-from fuel.schemes import SequentialScheme
+from fuel.schemes import SequentialScheme, ShuffledScheme
 from fuel.transformers import Flatten
 
 from blocks.algorithms import GradientDescent, CompositeRule, StepClipping, RMSProp, Adam
@@ -58,11 +58,12 @@ enc_dim = 256
 dec_dim = 256
 z_dim = 100
 oldmodel = None
-dataset = 'sketch'
+#dataset = 'sketch'
+dataset = 'sketch_uint8_shuffle'
 
 image_size, channels, data_train, data_valid, data_test = datasets.get_data(dataset)
 
-train_stream = Flatten(DataStream.default_stream(data_train, iteration_scheme=SequentialScheme(data_train.num_examples, batch_size)))
+train_stream = Flatten(DataStream.default_stream(data_train, iteration_scheme=ShuffledScheme(data_train.num_examples, batch_size)))
 valid_stream = Flatten(DataStream.default_stream(data_valid, iteration_scheme=SequentialScheme(data_valid.num_examples, batch_size)))
 test_stream  = Flatten(DataStream.default_stream(data_test,  iteration_scheme=SequentialScheme(data_test.num_examples, batch_size)))
 
@@ -161,14 +162,14 @@ print()
 
 
 encoder_rnn = LSTM(dim=enc_dim, name="RNN_enc", **rnninits)
-encoder_mlp = MLP([Identity()], [(260), 4*enc_dim], name="MLP_enc", **inits) #260
+encoder_mlp = MLP([Identity()], [(read_dim+dec_dim), 4*enc_dim], name="MLP_enc", **inits) #260 read_dim+dec_dim
 #decoder_rnn = LSTM(dim=dec_dim, name="RNN_dec", **rnninits)
 #decoder_mlp = MLP([Identity()], [             dec_dim, 4*dec_dim], name="MLP_dec", **inits)
 
 #classifier_mlp = MLP([Rectifier(), Logistic()], [dec_dim, z_dim, 1], name="classifier", **inits) 
 #classifier_mlp = MLP([Tanh(), Logistic()], [dec_dim, z_dim, 1], name="classifier", **inits) 
 #classifier_mlp = MLP([Tanh(), Softmax()], [dec_dim, z_dim, 1], name="classifier", **inits) 
-classifier_mlp = MLP([Identity(),Logistic()], [4*dec_dim, z_dim, 1], name="classifier", **inits) 
+classifier_mlp = MLP([Identity(),Softmax()], [4*dec_dim, z_dim, 2], name="classifier", **inits) 
 
 q_sampler = Qsampler(input_dim=enc_dim, output_dim=z_dim, **inits)
 
@@ -185,24 +186,32 @@ draw.initialize()
 
 #------------------------------------------------------------------------
 x = tensor.matrix(u'features')
-y = tensor.lmatrix(u'targets')
-#y = theano.tensor.extra_ops.to_one_hot(tensor.lmatrix(u'targets'),2)
+#y = tensor.lmatrix(u'targets')
+y = theano.tensor.extra_ops.to_one_hot(tensor.lmatrix(u'targets'),2)
 probs, h_enc, c_enc, center_y, center_x, delta = draw.reconstruct(x)
 #probs, h_enc, c_enc, center_y, center_x, delta = draw.reconstruct(x)
 #trim_probs = probs[-1,:] #Only take information from the last iteration
 trim_probs = probs #Only take information from the last iteration
 labels = y
+guesses = T.sum(y)#.argmax(axis=0)
+#trim_probs = probs.argmax(axis=1) #Only take information from the last iteration
+
+#Apply a max to probs (get position of max index)
+#Do the same for labels/dont use one hot
+
 cost = BinaryCrossEntropy().apply(labels, trim_probs)
 #cost = SquaredError().apply(labels,trim_probs)
 #cost = AbsoluteError().apply(tensor.concatenate([center_y, center_x, deltaY, deltaX]), tensor.concatenate([orig_y, orig_x, orig_dy, orig_dx]))
 #cost = (CategoricalCrossEntropy().apply(labels, trim_probs).copy(name='cost'))
 #cost = tensor.nnet.categorical_crossentropy(trim_probs, labels)
 #error_rate = tensor.neq(labels, trim_probs).mean(dtype=theano.config.floatX)
-error_rate = tensor.neq(labels, trim_probs.argmax(axis=0)).mean(dtype=theano.config.floatX)
+error_rate = tensor.neq(labels.argmax(axis=1), trim_probs.argmax(axis=1)).mean(dtype=theano.config.floatX)
 #error_rate = (MisclassificationRate().apply(labels, trim_probs).copy(name='error_rate'))
+ps = probs.shape
 cost.name = "BCE"
 error_rate.name = "error_rate"
-
+guesses.name = "guesses"
+ps.name = "probs_shape"
 #------------------------------------------------------------
 cg = ComputationGraph([cost])
 params = VariableFilter(roles=[PARAMETER])(cg.variables)
@@ -222,11 +231,11 @@ algorithm = GradientDescent(
 
 #------------------------------------------------------------------------
 # Setup monitors
-monitors = [cost,error_rate]
+monitors = [cost,error_rate,guesses,ps]
 #monitors = [cost]
 train_monitors = monitors[:]
-train_monitors += [aggregation.mean(algorithm.total_gradient_norm)]
-train_monitors += [aggregation.mean(algorithm.total_step_norm)]
+#train_monitors += [aggregation.mean(algorithm.total_gradient_norm)]
+#train_monitors += [aggregation.mean(algorithm.total_step_norm)]
 # Live plotting...
 
 

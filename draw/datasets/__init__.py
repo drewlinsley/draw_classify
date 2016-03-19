@@ -14,12 +14,26 @@ def get_data(data_name):
         data_valid = MNIST(which_sets=["test"], sources=['features'])
         data_test  = MNIST(which_sets=["test"], sources=['features'])
     elif data_name == 'sketch':
-	from fuel.datasets.hdf5 import H5PYDataset
-	img_size = (32, 32)
-	channels = 1
-	data_train = H5PYDataset('/Users/drewlinsley/Documents/draw/draw/datasets/sketch/sketch.hdf5', which_sets=('train',))
-        data_test = H5PYDataset('/Users/drewlinsley/Documents/draw/draw/datasets/sketch/sketch.hdf5', which_sets=('test',))
-        data_valid = H5PYDataset('/Users/drewlinsley/Documents/draw/draw/datasets/sketch/sketch.hdf5', which_sets=('test',))
+        from fuel.datasets.hdf5 import H5PYDataset
+        img_size = (32, 32)
+        channels = 1
+        data_train = H5PYDataset('/Users/drewlinsley/Documents/draw/draw/datasets/sketch/sketch.hdf5', which_sets=('train',),sources=['features','targets'])
+        data_test = H5PYDataset('/Users/drewlinsley/Documents/draw/draw/datasets/sketch/sketch.hdf5', which_sets=('test',),sources=['features','targets'])
+        data_valid = H5PYDataset('/Users/drewlinsley/Documents/draw/draw/datasets/sketch/sketch.hdf5', which_sets=('test',),sources=['features','targets'])
+    elif data_name == 'sketch_uint8':
+        from fuel.datasets.hdf5 import H5PYDataset
+        img_size = (32, 32)
+        channels = 1
+        data_train = H5PYDataset('/Users/drewlinsley/Documents/draw/draw/datasets/sketch_uint8/sketch_uint8.hdf5', which_sets=('train',),sources=['features','targets'])
+        data_test = H5PYDataset('/Users/drewlinsley/Documents/draw/draw/datasets/sketch_uint8/sketch_uint8.hdf5', which_sets=('test',),sources=['features','targets'])
+        data_valid = H5PYDataset('/Users/drewlinsley/Documents/draw/draw/datasets/sketch_uint8/sketch_uint8.hdf5', which_sets=('test',),sources=['features','targets'])
+    elif data_name == 'sketch_uint8_shuffle':
+        from fuel.datasets.hdf5 import H5PYDataset
+        img_size = (32, 32)
+        channels = 1
+        data_train = H5PYDataset('/Users/drewlinsley/Documents/draw/draw/datasets/sketch_uint8/sketch_uint8.hdf5', which_sets=('train',),sources=['features','targets'])
+        data_test = H5PYDataset('/Users/drewlinsley/Documents/draw/draw/datasets/sketch_uint8/sketch_uint8.hdf5', which_sets=('test',),sources=['features','targets'])
+        data_valid = H5PYDataset('/Users/drewlinsley/Documents/draw/draw/datasets/sketch_uint8/sketch_uint8.hdf5', which_sets=('test',),sources=['features','targets'])
     elif data_name == 'bmnist':
         from fuel.datasets.binarized_mnist import BinarizedMNIST
         img_size = (28, 28)

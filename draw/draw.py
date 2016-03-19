@@ -275,8 +275,8 @@ class AttentionWriter(Initializable):
 
         return c_update, center_y, center_x, delta
 
-    @application(inputs=['h'], outputs=['c_update', 'center_y', 'center_x', 'delta'])
-    def apply_circular(self, h,x):
+    @application(inputs=['x','h'], outputs=['c_update', 'center_y', 'center_x', 'delta'])
+    def apply_circular(self,x,h):
         #w = self.w_trafo.apply(h)
         l = self.z_trafo.apply(h)
 
@@ -335,12 +335,11 @@ class DrawClassifierModel(BaseRecurrent, Initializable, Random):
     def apply(self, u, c, h_enc, c_enc, x):
         #r,center_y,center_x,delta = self.reader.apply_simple(x, r, h_dec)
         
-        #x_hat = x-T.nnet.sigmoid(c) #feed in previous read
+        x_hat = x-T.nnet.sigmoid(c) #feed in previous read
 
         #r = self.reader.apply(x, x_hat, h_dec)
-        #r,center_y,center_x,delta = self.reader.apply_detailed(x, x_hat, h_enc)
-
-        r,center_y,center_x,delta = self.reader.apply_simple(x, h_enc)
+        r,center_y,center_x,delta = self.reader.apply_detailed(x, x_hat, h_enc)
+        #r,center_y,center_x,delta = self.reader.apply_simple(x, h_enc)
 
         #r,center_y,center_x,delta = self.reader.apply(x, r, h_dec)
         i_enc = self.encoder_mlp.apply(T.concatenate([r, h_enc], axis=1))
@@ -354,11 +353,18 @@ class DrawClassifierModel(BaseRecurrent, Initializable, Random):
 
         #c = c + self.writer.apply(h_dec)
         #c = self.writer.apply(h_dec)
-        c = c + self.writer.apply(h_enc)
+        c = c + self.writer.apply(h_enc) #Was working...
+        #c = c + T.concatenate([self.writer.apply_circular(x,h_enc)]) #isn't working...
+        #c = T.concatenate([r, h_enc], axis=1) #want to compare output of current glimpse to previous glimpse
 
         return c, h_enc, c_enc, center_y, center_x, delta, r
 
 
+#1. Read a patch
+#2. Feed into LSTM
+#3. Use sequence to guide next patch selection
+#...
+#4. classify after a while
 
     #------------------------------------------------------------------------
 
