@@ -83,12 +83,20 @@ data_test = package_sketch_images.assign_datastream(test_X,test_y)
 data_train = package_sketch_images.assign_datastream(train_X,train_y)
 image_size = (int(np.sqrt(test_X.shape[1])),int(np.sqrt(test_X.shape[1])))
 channels = 1
+target_categories = np.unique(train_y).shape[0]
 
 train_ind = np.arange(data_train.num_examples)
 test_ind = np.arange(data_test.num_examples)
 rng = np.random.RandomState(seed=1)
 rng.shuffle(train_ind)
 rng.shuffle(test_ind)
+
+#####
+#Comparisons to humans:
+#Is there a neural signature for changes in read delta parameter (glimpse size)?
+#Do machines/humans make similar mistakes?
+#Learning time::: compare this somehow...
+#####
 
 #Convert datasets into fuel
 #valid_stream = Flatten(DataStream.default_stream(data_valid, iteration_scheme=SequentialScheme(data_valid.num_examples, batch_size)))
@@ -197,7 +205,7 @@ encoder_mlp = MLP([Identity()], [(read_dim+dec_dim), 4*enc_dim], name="MLP_enc",
 #classifier_mlp = MLP([Rectifier(), Logistic()], [dec_dim, z_dim, 1], name="classifier", **inits) 
 #classifier_mlp = MLP([Tanh(), Logistic()], [dec_dim, z_dim, 1], name="classifier", **inits) 
 #classifier_mlp = MLP([Tanh(), Softmax()], [dec_dim, z_dim, 1], name="classifier", **inits) 
-classifier_mlp = MLP([Identity(),Softmax()], [4*dec_dim, z_dim, 2], name="classifier", **inits) 
+classifier_mlp = MLP([Identity(),Softmax()], [4*dec_dim, z_dim, target_categories], name="classifier", **inits) 
 
 q_sampler = Qsampler(input_dim=enc_dim, output_dim=z_dim, **inits)
 
@@ -212,25 +220,10 @@ draw = DrawClassifierModel(
 draw.initialize()
 
 
-
-#####
-#hidden_to_output = Linear(name='hidden_to_output', input_dim=4*dec_dim,
-#                          output_dim=2)
-#linear_output = hidden_to_output.apply(h)
-#softmax = NDimensionalSoftmax()
-#y_hat = softmax.apply(linear_output, extra_ndim=1)
-#cost = softmax.categorical_cross_entropy(
-#    y, linear_output, extra_ndim=1).mean()
-#cost.name = 'cost'
-#####
-
-
-
 #------------------------------------------------------------------------
 x = tensor.matrix('features')
 #y = tensor.ivector('targets')
-#y = tensor.imatrix('targets')
-y = tensor.matrix('targets', dtype='uint8')
+y = tensor.imatrix('targets')
 
 #y = theano.tensor.extra_ops.to_one_hot(tensor.lmatrix('targets'),2)
 probs, h_enc, c_enc, center_y, center_x, delta = draw.reconstruct(x)
