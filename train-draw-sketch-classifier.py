@@ -45,6 +45,7 @@ from draw.draw import *
 from draw.samplecheckpoint import SampleCheckpoint
 from draw.partsonlycheckpoint import PartsOnlyCheckpoint
 
+from draw.datasets import package_sketch_images
 sys.setrecursionlimit(100000)
 
 #----------------------------------------------------------------------------
@@ -53,19 +54,46 @@ epochs = 100
 batch_size = 200
 learning_rate = 3e-4
 attention = '2,5'
-n_iter = 16
+n_iter = 8
 enc_dim = 256
 dec_dim = 256
 z_dim = 100
 oldmodel = None
 #dataset = 'sketch'
 dataset = 'sketch_uint8_shuffle'
+data_dir = '/Users/drewlinsley/Desktop/res_results_problem_4'
+#----------------------------------------------------------------------------
+#----------------------------------------------------------------------------
+# image_size, channels, data_train, data_valid, data_test = datasets.get_data(dataset)
 
-image_size, channels, data_train, data_valid, data_test = datasets.get_data(dataset)
+# train_ind = np.arange(data_train.num_examples)
+# test_ind = np.arange(data_test.num_examples)
+# rng = np.random.RandomState(seed=1)
+# rng.shuffle(train_ind)
+# rng.shuffle(test_ind)
 
-train_stream = Flatten(DataStream.default_stream(data_train, iteration_scheme=ShuffledScheme(data_train.num_examples, batch_size)))
-valid_stream = Flatten(DataStream.default_stream(data_valid, iteration_scheme=SequentialScheme(data_valid.num_examples, batch_size)))
-test_stream  = Flatten(DataStream.default_stream(data_test,  iteration_scheme=SequentialScheme(data_test.num_examples, batch_size)))
+# train_stream  = Flatten(DataStream.default_stream(
+#     data_train,  iteration_scheme=ShuffledScheme(train_ind, batch_size)))
+# test_stream  = Flatten(DataStream.default_stream(
+#     data_test,  iteration_scheme=ShuffledScheme(test_ind, batch_size)))
+
+#Get shuffled data
+test_X, train_X, test_y, train_y = package_sketch_images.import_sketch(data_dir)
+data_test = package_sketch_images.assign_datastream(test_X,test_y)
+data_train = package_sketch_images.assign_datastream(train_X,train_y)
+image_size = (int(np.sqrt(test_X.shape[1])),int(np.sqrt(test_X.shape[1])))
+channels = 1
+
+train_ind = np.arange(data_train.num_examples)
+test_ind = np.arange(data_test.num_examples)
+rng = np.random.RandomState(seed=1)
+rng.shuffle(train_ind)
+rng.shuffle(test_ind)
+
+#Convert datasets into fuel
+#valid_stream = Flatten(DataStream.default_stream(data_valid, iteration_scheme=SequentialScheme(data_valid.num_examples, batch_size)))
+test_stream  = Flatten(DataStream.default_stream(data_test,  iteration_scheme=ShuffledScheme(test_ind, batch_size)))
+train_stream = Flatten(DataStream.default_stream(data_train, iteration_scheme=ShuffledScheme(train_ind, batch_size)))
 
 if name is None:
     name = dataset
@@ -184,32 +212,56 @@ draw = DrawClassifierModel(
 draw.initialize()
 
 
+
+#####
+#hidden_to_output = Linear(name='hidden_to_output', input_dim=4*dec_dim,
+#                          output_dim=2)
+#linear_output = hidden_to_output.apply(h)
+#softmax = NDimensionalSoftmax()
+#y_hat = softmax.apply(linear_output, extra_ndim=1)
+#cost = softmax.categorical_cross_entropy(
+#    y, linear_output, extra_ndim=1).mean()
+#cost.name = 'cost'
+#####
+
+
+
 #------------------------------------------------------------------------
-x = tensor.matrix(u'features')
-#y = tensor.lmatrix(u'targets')
-y = theano.tensor.extra_ops.to_one_hot(tensor.lmatrix(u'targets'),2)
+x = tensor.matrix('features')
+#y = tensor.ivector('targets')
+#y = tensor.imatrix('targets')
+y = tensor.matrix('targets', dtype='uint8')
+
+#y = theano.tensor.extra_ops.to_one_hot(tensor.lmatrix('targets'),2)
 probs, h_enc, c_enc, center_y, center_x, delta = draw.reconstruct(x)
 #probs, h_enc, c_enc, center_y, center_x, delta = draw.reconstruct(x)
 #trim_probs = probs[-1,:] #Only take information from the last iteration
 trim_probs = probs #Only take information from the last iteration
-labels = y
-guesses = T.sum(y)#.argmax(axis=0)
+labels = y #tensor.lt(y, .5)
 #trim_probs = probs.argmax(axis=1) #Only take information from the last iteration
 
 #Apply a max to probs (get position of max index)
 #Do the same for labels/dont use one hot
 
-cost = BinaryCrossEntropy().apply(labels, trim_probs)
+#cost = BinaryCrossEntropy().apply(labels, trim_probs)
 #cost = SquaredError().apply(labels,trim_probs)
 #cost = AbsoluteError().apply(tensor.concatenate([center_y, center_x, deltaY, deltaX]), tensor.concatenate([orig_y, orig_x, orig_dy, orig_dx]))
-#cost = (CategoricalCrossEntropy().apply(labels, trim_probs).copy(name='cost'))
+cost = (CategoricalCrossEntropy().apply(labels, trim_probs).copy(name='cost'))
 #cost = tensor.nnet.categorical_crossentropy(trim_probs, labels)
 #error_rate = tensor.neq(labels, trim_probs).mean(dtype=theano.config.floatX)
-error_rate = tensor.neq(labels.argmax(axis=1), trim_probs.argmax(axis=1)).mean(dtype=theano.config.floatX)
+#error_rate = tensor.neq(labels.argmax(axis=1), trim_probs.argmax(axis=1)).mean(dtype=theano.config.floatX)
+
+
+error_rate = tensor.neq(y.argmax(axis=1), trim_probs.argmax(axis=1)).mean(dtype=theano.config.floatX)
+#error_rate = tensor.neq(y.argmax(axis=1), tensor.lt(trim_probs, .5).argmax(axis=1)).mean(dtype=theano.config.floatX)
 #error_rate = (MisclassificationRate().apply(labels, trim_probs).copy(name='error_rate'))
-ps = probs.shape
 cost.name = "BCE"
 error_rate.name = "error_rate"
+
+
+
+guesses = labels.argmax(axis=1) #tensor.lt(y, .5)#T.sum(y)#.argmax(axis=0)
+ps = trim_probs
 guesses.name = "guesses"
 ps.name = "probs_shape"
 #------------------------------------------------------------
@@ -231,11 +283,12 @@ algorithm = GradientDescent(
 
 #------------------------------------------------------------------------
 # Setup monitors
-monitors = [cost,error_rate,guesses,ps]
+#monitors = [cost,error_rate,guesses,ps]
+monitors = [cost,error_rate]
 #monitors = [cost]
 train_monitors = monitors[:]
-#train_monitors += [aggregation.mean(algorithm.total_gradient_norm)]
-#train_monitors += [aggregation.mean(algorithm.total_step_norm)]
+train_monitors += [aggregation.mean(algorithm.total_gradient_norm)]
+train_monitors += [aggregation.mean(algorithm.total_step_norm)]
 # Live plotting...
 
 
