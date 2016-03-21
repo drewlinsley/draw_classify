@@ -62,6 +62,8 @@ oldmodel = None
 #dataset = 'sketch'
 dataset = 'sketch_uint8_shuffle'
 data_dir = '/Users/drewlinsley/Desktop/res_results_problem_4'
+#data_dir = '/home/ubuntu/res_results_problem_4'
+
 #----------------------------------------------------------------------------
 #----------------------------------------------------------------------------
 # image_size, channels, data_train, data_valid, data_test = datasets.get_data(dataset)
@@ -312,7 +314,7 @@ main_loop = MainLoop(
             test_stream,
 #                updates=scan_updates, 
             prefix="test"),
-        #Checkpoint(name, before_training=False, after_epoch=True, save_separately=['log', 'model']),
+        #Checkpoint(name, before_training=True, after_epoch=True, save_separately=['log', 'model']),
         PartsOnlyCheckpoint("{}/{}".format(subdir,name), before_training=True, after_epoch=True, save_separately=['log', 'model']),
         ProgressBar(),
         Printing()])

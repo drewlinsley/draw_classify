@@ -206,6 +206,39 @@ class ZoomableAttentionWindow(object):
     
         return center_y, center_x, delta, sigma, gamma
 
+    def nn2att_coors(self, l):
+        """Convert neural-net outputs to attention parameters
+    
+        Parameters
+        ----------
+        layer : :class:`~tensor.TensorVariable`
+            A batch of neural net outputs with shape (batch_size x 5)
+    
+        Returns
+        -------
+        center_y : :class:`~tensor.TensorVariable` 
+        center_x : :class:`~tensor.TensorVariable` 
+        delta : :class:`~tensor.TensorVariable` 
+        sigma : :class:`~tensor.TensorVariable` 
+        gamma : :class:`~tensor.TensorVariable` 
+        """
+        center_y  = l[:,0]
+        center_x  = l[:,1]
+        log_delta = l[:,2]
+        log_sigma = l[:,3]
+    
+        delta = T.exp(log_delta)
+        sigma = T.exp(log_sigma/2.)
+    
+        # normalize coordinates
+        center_x = (center_x+1.)/2. * self.img_width
+        center_y = (center_y+1.)/2. * self.img_height
+        delta = (max(self.img_width, self.img_height)-1) / (self.N-1) * delta
+    
+        return center_y, center_x, delta, sigma
+
+
+
 #=============================================================================
 
 if __name__ == "__main__":
