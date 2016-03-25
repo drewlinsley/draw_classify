@@ -100,3 +100,43 @@ def svm_trainer(train_data,test_data,train_labels,test_labels,num_estimates,num_
 		#Store stuff
 		acc = np.hstack((acc,it_acc))
 	return acc
+
+def plot_ims(test_image_res,tcenter_x,tcenter_y,tdelta,which_ims,out_dir):
+	from matplotlib.patches import Rectangle, Circle
+	colors = mpl.cm.Reds((range(np.sum(which_ims))))
+	a_range = np.linspace(.2,.8,np.sum(which_ims))
+	for num in range(0,which_ims.shape[0]):
+		if which_ims[num] == True:
+			x=tcenter_x[:,num]
+			y=tcenter_y[:,num]
+			d=tdelta[:,num]
+			plt.figure()
+			plt.axis([0,32,0,32])
+			currentAxis = plt.gca()
+			it_im = test_image_res[num,:].reshape(image_size)
+			currentAxis.imshow(it_im,cmap=plt.cm.binary)
+			for idx in range(0,x.shape[0]):
+
+				adj_delta = (d[idx]/2)
+				d_hyp = np.sqrt(adj_delta**2 + adj_delta**2)
+
+				lcx = np.min(((x[idx] - adj_delta),0))
+				lcy = np.min(((y[idx] - adj_delta),0))
+				rcx = np.min(((x[idx] + adj_delta),0))
+				rcy = np.min(((y[idx] + adj_delta),0))
+				#currentAxis.add_patch(Rectangle(((lcx,lcy)), adj_delta, adj_delta, ec='red',facecolor='none'))
+				currentAxis.add_patch(Circle(((x[idx],y[idx])), adj_delta, ec='red',facecolor='none',alpha=a_range[idx]))
+
+
+			#plt.imshow(it_im,cmap=plt.cm.binary)
+			#c = np.linspace(1,lwidths.shape[0],lwidths.shape[0])
+			#plt.scatter(x,y, s=lwidths, c=c, cmap=mpl.cm.Reds, alpha=0.5)
+			#plt.show()
+			#xnew = np.linspace(T.min(),T.max(),300)
+			#power_smooth = spline(T,power,xnew)
+			#plt.plot(x[:,num],y[:,num])
+
+			fig_name = os.path.join(subdir,"{}_{}.png".format("image", num))
+			plt.savefig(fig_name)
+			plt.cla()
+			plt.clf()

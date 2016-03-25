@@ -86,53 +86,46 @@ N_iter = 64;
 
 #Load old model
 #model_file = 'new_test-20160313-125114/new_test_model'
-model_file = 'new_class_test-20160320-145543/new_class_test_model'
+#model_file = 'new_class_test-20160321-160949/new_class_test_model'
+model_file = 'new_class_test-16_it/new_class_test_model'
 with open(model_file,"rb") as f:
     model = pickle.load(f)
 draw = model.get_top_bricks()[0]
 
-#Make a folder
-subdir = "classification_traces"
-if not os.path.exists(subdir):
-    os.makedirs(subdir)
-
 #Get attention model extractions
-images = T.dmatrix('images')
+images = T.matrix('images')
 
 probs, h_enc, c_enc, center_y, center_x, delta = draw.reconstruct(images)
 do_sample = theano.function(inputs=[images],outputs=[probs, h_enc, c_enc, center_y, center_x, delta],allow_input_downcast=True)
 
 #rec,kl,cy,cx = draw.reconstruct(images)
 #do_sample = theano.function(inputs=[images],outputs=[cy,cx],allow_input_downcast=True)
-tprobs, th_enc, tc_enc, tcenter_y, tcenter_x, tdelta = do_sample(test_image.reshape(batch_size,np.prod(image_size)))
-acc = np.sum(tprobs.argmax(axis=1) == test_y[0:batch_size,:].flatten()) / batch_size
+tprobs, th_enc, tc_enc, tcenter_y, tcenter_x, tdelta = do_sample(test_X)
+correct_ims = tprobs.argmax(axis=1) == test_y.flatten()
+acc = np.sum(correct_ims) / test_X.shape[0]
+incorrect_ims = ~correct_ims
 
 #Plot everything
 from matplotlib.collections import LineCollection
+from SVRT_analysis_helper_functions import scale_range
 import matplotlib as mpl
 mymap = plt.get_cmap("Reds")
 # get the colors from the color map
-test_image_res = test_X[0:batch_size,:].reshape(batch_size,image_size[0],image_size[1])
+test_image_res = test_X#[0:batch_size,:].reshape(batch_size,image_size[0],image_size[1])
 
 #img_grid(test_image.reshape(batch_size,1,image_size[0],image_size[1]),rows,cols)
-out_dir = subdir
-for num in range(0,test_image_res.shape[0]):
-	x=tcenter_x[:,num]
-	y=tcenter_y[:,num]
-	lwidths=scale_range(tdelta[:,num],1000,100)
-	plt.axis([0,32,0,32])
-	plt.imshow(test_image_res[num,:,:],cmap=plt.cm.binary)
-	c = np.linspace(1,lwidths.shape[0],lwidths.shape[0])
-	plt.scatter(x,y, s=lwidths, c=c, cmap=mpl.cm.Reds, alpha=0.5)
-	#plt.show()
-	#xnew = np.linspace(T.min(),T.max(),300)
-	#power_smooth = spline(T,power,xnew)
-	#plt.plot(x[:,num],y[:,num])
+from SVRT_analysis_helper_functions import plot_ims
+#Make a folder
+subdir = "classification_trace_errors"
+if not os.path.exists(subdir):
+    os.makedirs(subdir)
+plot_ims(test_image_res,tcenter_x,tcenter_y,tdelta,incorrect_ims,out_dir)
+#Make a folder
+subdir = "classification_trace_correct"
+if not os.path.exists(subdir):
+    os.makedirs(subdir)
+plot_ims(test_image_res,tcenter_x,tcenter_y,tdelta,correct_ims,out_dir)
 
-	fig_name = os.path.join(subdir,"{}_{}.png".format("image", num))
-	plt.savefig(fig_name)
-	plt.cla()
-	plt.clf()
 
 
 

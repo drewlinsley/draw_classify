@@ -50,11 +50,11 @@ sys.setrecursionlimit(100000)
 
 #----------------------------------------------------------------------------
 name = 'new_class_test'
-epochs = 100
-batch_size = 200
+epochs = 50
+batch_size = 100
 learning_rate = 3e-4
 attention = '2,5'
-n_iter = 8
+n_iter = 32
 enc_dim = 256
 dec_dim = 256
 z_dim = 100

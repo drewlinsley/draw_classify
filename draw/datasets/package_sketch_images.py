@@ -34,6 +34,7 @@ def assign_datastream(X,y):
 	y = np.eye(n_labels)[y]
 	# Reassign dataset
 	dataset = IndexableDataset({'features': X.astype(np.float64),'targets': y.astype(np.uint8)},sources=('features','targets')) #may ask to cast X as float32
+	#dataset = IndexableDataset({'features': X.astype(np.float32),'targets': y.astype(np.int32)},sources=('features','targets')) #may ask to cast X as float32
 	return dataset
 
 def import_sketch(data_dir):
