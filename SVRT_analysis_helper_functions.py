@@ -104,7 +104,7 @@ def svm_trainer(train_data,test_data,train_labels,test_labels,num_estimates,num_
 def plot_ims(test_image_res,tcenter_x,tcenter_y,tdelta,which_ims,out_dir):
 	from matplotlib.patches import Rectangle, Circle
 	colors = mpl.cm.Reds((range(np.sum(which_ims))))
-	a_range = np.linspace(.2,.8,np.sum(which_ims))
+	a_range = np.linspace(.1,.5,np.sum(which_ims))
 	for num in range(0,which_ims.shape[0]):
 		if which_ims[num] == True:
 			x=tcenter_x[:,num]

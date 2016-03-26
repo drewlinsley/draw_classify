@@ -5,20 +5,17 @@ new_ft = '.jpg';
 ns = [32,32];
 
 for ol = 1:numel(dir_list),
-    fprintf('Working directory %i/%i\r',ol,numel(dir_list))
-    %name old dir
-    od =  fullfile(stem_dir,dir_list(ol).name);
     %make new dir
     nd = fullfile(stem_dir,strcat('res_',dir_list(ol).name));
     if ~exist(nd,'dir'),
         mkdir(nd);
     end
     %list files in new dir
-    flist = dir(fullfile(od,strcat('*',old_ft)));
+    flist = dir(fullfile(nd,strcat('*',old_ft)));
     for il = 1:numel(flist),
-        nf = im2bw(imresize(imread(fullfile(od,flist(il).name)),ns),.9);
-        new_name = strrep(flist(il).name,old_ft,new_ft);
-        imwrite(nf,fullfile(nd,new_name),'Quality',100);
+        nf = im2bw(imresize(imread(fullfile(wd,flist(il).name)),ns),.9);
+        imwrite(nf,fullfile(od,files(idx).name),'Quality',100);
+        
     end
 end
 
