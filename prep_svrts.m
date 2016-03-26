@@ -2,7 +2,7 @@ stem_dir = '/Users/drewlinsley/Documents/ubuntu_shared';
 dir_list = dir(fullfile(stem_dir,'results*'));
 old_ft = '.png';
 new_ft = '.jpg';
-ns = [32,32];
+ns = [64,64];
 
 for ol = 1:numel(dir_list),
     fprintf('Working directory %i/%i\r',ol,numel(dir_list))
@@ -22,18 +22,18 @@ for ol = 1:numel(dir_list),
     end
 end
 
-return
-wd = '/Users/drewlinsley/Desktop/results_problem_4';
-od = '/Users/drewlinsley/Desktop/res_results_problem_4';
-wd = '/Users/drewlinsley/Desktop/res_results_problem_4';
-od = '/Users/drewlinsley/Desktop/new_res_results_problem_4';
-
-if ~exist(od,'dir'),
-    mkdir(od);
-end
-ns = [28,28];
-files = dir(fullfile(wd,'*.jpg'));
-num_files = numel(files);
-for idx = 1:num_files,
-    if mod(idx,1e4)==0,fprintf('%i/%i\r',idx,num_files);end
-end
+% return
+% wd = '/Users/drewlinsley/Desktop/results_problem_4';
+% od = '/Users/drewlinsley/Desktop/res_results_problem_4';
+% wd = '/Users/drewlinsley/Desktop/res_results_problem_4';
+% od = '/Users/drewlinsley/Desktop/new_res_results_problem_4';
+% 
+% if ~exist(od,'dir'),
+%     mkdir(od);
+% end
+% ns = [28,28];
+% files = dir(fullfile(wd,'*.jpg'));
+% num_files = numel(files);
+% for idx = 1:num_files,
+%     if mod(idx,1e4)==0,fprintf('%i/%i\r',idx,num_files);end
+% end
