@@ -51,12 +51,12 @@ sys.setrecursionlimit(100000)
 def main(dataset):
     #----------------------------------------------------------------------------
     epochs = 50
-    batch_size = 100
+    batch_size = 200
     learning_rate = 3e-4
-    attention = '2,5'
-    n_iter = 32
-    enc_dim = 256
-    dec_dim = 256
+    attention = '8,8'
+    n_iter = 8
+    enc_dim = 1024
+    dec_dim = 1024
     z_dim = 100
     oldmodel = None
     #dataset = 'sketch'
@@ -165,7 +165,7 @@ def main(dataset):
 
     lr_str = lr_tag(learning_rate)
 
-    subdir = name + "-" + time.strftime("%Y%m%d-%H%M%S");
+    subdir = name
     longname = "%s-%s-t%d-enc%d-dec%d-z%d-lr%s" % (dataset, attention_tag, n_iter, enc_dim, dec_dim, z_dim, lr_str)
     pickle_file = subdir + "/" + longname + ".pkl"
 

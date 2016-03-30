@@ -38,7 +38,7 @@ from blocks.extensions.saveload import Checkpoint
 from blocks.extensions.monitoring import DataStreamMonitoring, TrainingDataMonitoring
 from blocks.main_loop import MainLoop
 from blocks.model import Model
-
+from blocks.bricks.conv import Convolutional, ConvolutionalSequence, Flattener
 
 import draw.datasets as datasets
 from draw.draw import *
@@ -51,17 +51,17 @@ sys.setrecursionlimit(100000)
 #----------------------------------------------------------------------------
 name = 'new_class_test'
 epochs = 50
-batch_size = 100
+batch_size = 200
 learning_rate = 3e-4
-attention = '2,5'
-n_iter = 32
-enc_dim = 256
-dec_dim = 256
+attention = '8,8'
+n_iter = 8
+enc_dim = 1024
+dec_dim = 1024
 z_dim = 100
 oldmodel = None
 #dataset = 'sketch'
 dataset = 'sketch_uint8_shuffle'
-data_dir = '/Users/drewlinsley/Desktop/res_results_problem_4'
+data_dir = '/Users/drewlinsley/Documents/ubuntu_shared/res_results_problem_4'
 #data_dir = '/home/ubuntu/res_results_problem_4'
 
 #----------------------------------------------------------------------------
@@ -200,13 +200,12 @@ print()
 
 
 encoder_rnn = LSTM(dim=enc_dim, name="RNN_enc", **rnninits)
+#/////
+#Insert a conv/deconv before the encoder MLP?
+#/////
 encoder_mlp = MLP([Identity()], [(read_dim+dec_dim), 4*enc_dim], name="MLP_enc", **inits) #260 read_dim+dec_dim
 #decoder_rnn = LSTM(dim=dec_dim, name="RNN_dec", **rnninits)
 #decoder_mlp = MLP([Identity()], [             dec_dim, 4*dec_dim], name="MLP_dec", **inits)
-
-#classifier_mlp = MLP([Rectifier(), Logistic()], [dec_dim, z_dim, 1], name="classifier", **inits) 
-#classifier_mlp = MLP([Tanh(), Logistic()], [dec_dim, z_dim, 1], name="classifier", **inits) 
-#classifier_mlp = MLP([Tanh(), Softmax()], [dec_dim, z_dim, 1], name="classifier", **inits) 
 classifier_mlp = MLP([Identity(),Softmax()], [4*dec_dim, z_dim, target_categories], name="classifier", **inits) 
 
 q_sampler = Qsampler(input_dim=enc_dim, output_dim=z_dim, **inits)
