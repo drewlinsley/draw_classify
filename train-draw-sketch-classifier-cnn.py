@@ -207,7 +207,7 @@ encoder_cnn = ConvolutionalSequence(
     [
         Convolutional(
             filter_size=(3, 3),
-            num_filters=16,
+            num_filters=20,
             border_mode=(1,1),
             step=(1,1),
             name='layer_1'),

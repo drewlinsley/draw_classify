@@ -342,8 +342,10 @@ class DrawClassifierModel(BaseRecurrent, Initializable, Random):
         #///Pass patch through CNN
         #cr = self.encoder_cnn.apply(r)
         batch_size = r.shape[0]
-        it_number = T.cast(r.shape[1] / (self.reader.N ** 2), 'int32') #attention fixation number
-        res_r = r.reshape((batch_size, it_number, self.reader.N, self.reader.N))
+        #it_number = T.cast(r.shape[1] / (self.reader.N ** 2), 'int32') #attention fixation number
+        #tres_r = r.reshape((batch_size, it_number, self.reader.N, self.reader.N))
+        #res_r = tres_r[:,-1,:,:].reshape((batch_size,1,self.reader.N, self.reader.N))
+        res_r = r.reshape((batch_size,1,self.reader.N, self.reader.N))
         r_features = self.flattener.apply(self.encoder_cnn.apply(res_r))
         #///
         #---Encode the attention sequence

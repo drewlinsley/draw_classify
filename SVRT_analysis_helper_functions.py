@@ -101,11 +101,17 @@ def svm_trainer(train_data,test_data,train_labels,test_labels,num_estimates,num_
 		acc = np.hstack((acc,it_acc))
 	return acc
 
-def plot_ims(test_image_res,tcenter_x,tcenter_y,tdelta,which_ims,out_dir):
-	from matplotlib.patches import Rectangle, Circle
-	colors = mpl.cm.Reds((range(np.sum(which_ims))))
-	a_range = np.linspace(.1,.5,np.sum(which_ims))
-	for num in range(0,which_ims.shape[0]):
+def plot_ims(test_image_res,tcenter_x,tcenter_y,tdelta,which_ims,image_size,max_ims,subdir):
+    import matplotlib as mpl
+    #mpl.use('Agg')
+    from matplotlib.patches import Rectangle, Circle
+    import matplotlib.pyplot as plt
+    import numpy as np
+    import os
+    colors = mpl.cm.Reds((range(np.sum(which_ims))))
+    a_range = np.linspace(.1,.5,np.sum(which_ims))
+    max_num_ims = int(np.max((max_ims,which_ims.shape[0])))
+    for num in range(0,max_num_ims):
 		if which_ims[num] == True:
 			x=tcenter_x[:,num]
 			y=tcenter_y[:,num]
@@ -138,5 +144,4 @@ def plot_ims(test_image_res,tcenter_x,tcenter_y,tdelta,which_ims,out_dir):
 
 			fig_name = os.path.join(subdir,"{}_{}.png".format("image", num))
 			plt.savefig(fig_name)
-			plt.cla()
-			plt.clf()
+			plt.close('all')
