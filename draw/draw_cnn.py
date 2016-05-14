@@ -15,7 +15,7 @@ from blocks.bricks import Random, Initializable, MLP, Linear
 from blocks.bricks import Identity, Tanh, Logistic
 from blocks.bricks.conv import Flattener
 
-from attention import ZoomableAttentionWindow
+from attention_cnn import ZoomableAttentionWindow
 from prob_layers import replicate_batch
 
 #-----------------------------------------------------------------------------
@@ -151,6 +151,7 @@ class AttentionReader(Initializable):
         self.x_dim = x_dim
         self.dec_dim = dec_dim
         self.output_dim = 2*channels*N*N
+        self.channels = channels
 
         self.zoomer = ZoomableAttentionWindow(channels, height, width, N)
         self.readout = MLP(activations=[Identity()], dims=[dec_dim, 5], **kwargs)
@@ -178,7 +179,7 @@ class AttentionReader(Initializable):
         
         return T.concatenate([w, w_hat], axis=1)
 
-    @application(inputs=['x', 'x_hat', 'h_dec'], outputs=['r','center_y', 'center_x', 'delta'])
+    @application(inputs=['x', 'x_hat', 'h_dec'], outputs=['w','w_hat','center_y', 'center_x', 'delta'])
     def apply_detailed(self, x, x_hat, h_dec):
         l = self.readout.apply(h_dec)
 
@@ -187,8 +188,8 @@ class AttentionReader(Initializable):
         w     = gamma * self.zoomer.read(x    , center_y, center_x, delta, sigma)
         w_hat = gamma * self.zoomer.read(x_hat, center_y, center_x, delta, sigma)
         
-        r = T.concatenate([w, w_hat], axis=1)
-        return r, center_y, center_x, delta
+        #r = T.concatenate([w, w_hat], axis=1)
+        return w, w_hat, center_y, center_x, delta
 
     @application(inputs=['x', 'h_dec'], outputs=['r','center_y', 'center_x', 'delta'])
     def apply_simple(self, x, h_dec):
@@ -294,13 +295,14 @@ class AttentionWriter(Initializable):
 
 class DrawClassifierModel(BaseRecurrent, Initializable, Random):
     def __init__(self, n_iter, reader, 
-                    encoder_cnn, encoder_mlp, encoder_rnn, sampler,
+                    encoder_cnn, cnn_mlp, encoder_mlp, encoder_rnn, sampler,
                     classifier, writer, flattener, **kwargs):
         super(DrawClassifierModel, self).__init__(**kwargs)   
         self.n_iter = n_iter
 
         self.reader = reader
         self.encoder_cnn = encoder_cnn 
+        self.cnn_mlp = cnn_mlp
         self.encoder_mlp = encoder_mlp 
         self.encoder_rnn = encoder_rnn
         self.sampler = sampler
@@ -308,7 +310,7 @@ class DrawClassifierModel(BaseRecurrent, Initializable, Random):
         self.classifier = classifier
         self.flattener = flattener
 
-        self.children = [self.reader, self.encoder_cnn, self.encoder_mlp, self.encoder_rnn,
+        self.children = [self.reader, self.encoder_cnn, self.cnn_mlp, self.encoder_mlp, self.encoder_rnn,
         self.sampler, self.writer, self.classifier, self.flattener]
  
     def get_dim(self, name):
@@ -338,19 +340,21 @@ class DrawClassifierModel(BaseRecurrent, Initializable, Random):
         #---Use residue to drive next spotlight
         x_hat = x-T.nnet.sigmoid(c) #feed in previous read
         #---Read a patch (and emit x/y/size)
-        r,center_y,center_x,delta = self.reader.apply_detailed(x, x_hat, h_enc)
-        #///Pass patch through CNN
-        #cr = self.encoder_cnn.apply(r)
-        batch_size = r.shape[0]
-        #it_number = T.cast(r.shape[1] / (self.reader.N ** 2), 'int32') #attention fixation number
-        #tres_r = r.reshape((batch_size, it_number, self.reader.N, self.reader.N))
-        #res_r = tres_r[:,-1,:,:].reshape((batch_size,1,self.reader.N, self.reader.N))
-        res_r = r.reshape((batch_size,1,self.reader.N, self.reader.N))
-        r_features = self.flattener.apply(self.encoder_cnn.apply(res_r))
+        w,w_hat,center_y,center_x,delta = self.reader.apply_detailed(x, x_hat, h_enc)
+        #Reshape current image patch to a CNN
+        batch_size = w.shape[0]
+        w_r = w.reshape((batch_size, self.reader.channels, self.reader.N, self.reader.N)) #reshape to fit CNN
+        w_r_features = self.encoder_cnn.apply(w_r) #pass through cnn
+        flat_w_r_features = self.flattener.apply(w_r_features) #flatten to an array
+        cnn_features = self.cnn_mlp.apply(flat_w_r_features) #transform to w_hat size
+        #cnn_features = T.transpose(cnn_features)
+        r = T.concatenate([cnn_features, w_hat], axis=1)
         #///
-        #---Encode the attention sequence
-        i_enc = self.encoder_mlp.apply(T.concatenate([r_features, h_enc], axis=1))
+        #---Encode the attention sequence        
+        concat_seq = T.concatenate([r, h_enc], axis=1)
+        i_enc = self.encoder_mlp.apply(concat_seq)
         h_enc, c_enc = self.encoder_rnn.apply(states=h_enc, cells=c_enc, inputs=i_enc, iterate=False)
+
         #---For the generative model
         #z, kl = self.sampler.sample(h_enc, u)
         #i_dec = self.decoder_mlp.apply(h_enc)

@@ -108,16 +108,18 @@ def plot_ims(test_image_res,tcenter_x,tcenter_y,tdelta,which_ims,image_size,max_
     import matplotlib.pyplot as plt
     import numpy as np
     import os
+    ax_x = int(np.sqrt(test_image_res.shape[1]))
+    ax_y = int(np.sqrt(test_image_res.shape[1]))
     colors = mpl.cm.Reds((range(np.sum(which_ims))))
     a_range = np.linspace(.1,.5,np.sum(which_ims))
-    max_num_ims = int(np.max((max_ims,which_ims.shape[0])))
+    max_num_ims = int(np.min((max_ims,which_ims.shape[0])))
     for num in range(0,max_num_ims):
 		if which_ims[num] == True:
 			x=tcenter_x[:,num]
 			y=tcenter_y[:,num]
 			d=tdelta[:,num]
 			plt.figure()
-			plt.axis([0,32,0,32])
+			plt.axis([0,ax_x,0,ax_y])
 			currentAxis = plt.gca()
 			it_im = test_image_res[num,:].reshape(image_size)
 			currentAxis.imshow(it_im,cmap=plt.cm.binary)

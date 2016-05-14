@@ -207,15 +207,15 @@ encoder_cnn = ConvolutionalSequence(
     [
         Convolutional(
             filter_size=(3, 3),
-            num_filters=20,
-            border_mode=(1,1),
+            num_filters=30,
+            border_mode='half',
             step=(1,1),
             name='layer_1'),
         act,
         MaxPooling(
             pooling_size=(2, 2),
             step=(1,1),
-            padding=(1,1)),
+            padding=(1,1))#,
         #Convolutional(
         #    filter_size=(3, 3),
         #    num_filters=20,
@@ -227,10 +227,14 @@ encoder_cnn = ConvolutionalSequence(
     num_channels=1,
     image_size=(read_N, read_N),
     **inits)
-flattener = Flattener()
 
+dummy_cnn = encoder_cnn
+dummy_cnn.initialize()
+cnn_output_dim = np.prod(dummy_cnn.get_dim('output')) #Take product now so that you can flatten later
+cnn_mlp = MLP([Identity()], [cnn_output_dim,enc_dim],name="CNN_encoder", **inits) #convert CNN feature maps to encoder_mlp dimensions
+flattener = Flattener()
 #/////
-encoder_mlp = MLP([Identity()], [(read_dim+dec_dim), 4*enc_dim], name="MLP_enc", **inits) #260 read_dim+dec_dim
+encoder_mlp = MLP([Identity()], [(read_dim+enc_dim), 4*enc_dim], name="LSTM_encoder", **inits) #260 read_dim+dec_dim
 #decoder_rnn = LSTM(dim=dec_dim, name="RNN_dec", **rnninits)
 #decoder_mlp = MLP([Identity()], [             dec_dim, 4*dec_dim], name="MLP_dec", **inits)
 classifier_mlp = MLP([Identity(),Softmax()], [4*dec_dim, z_dim, target_categories], name="classifier", **inits) 
@@ -242,6 +246,7 @@ draw = DrawClassifierModel(
             reader=reader,
             writer=writer,
             encoder_cnn=encoder_cnn,
+            cnn_mlp=cnn_mlp,
             encoder_mlp=encoder_mlp,
             encoder_rnn=encoder_rnn,
             sampler = q_sampler,

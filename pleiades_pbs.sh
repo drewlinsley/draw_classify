@@ -9,15 +9,16 @@ do
 
 	thisdata=$(printf "res_results_problem_%i" "$i")
 	modelfile=$(printf "%s_model" "$thisdata")
-	modeldir=$(printf "%s/%s" "maindir" "thisdata")
+	modeldir=$(printf "%s/%s" "$maindir" "$thisdata")
 
 	echo "#!/bin/tcsh" > $output_file
-	echo "#PBS -X -I -l walltime=2:00:00,nodes=gpgpu+1:ppn=1" >> $output_file
+	echo "#PBS -X -l walltime=2:00:00,nodes=gpgpu+1:ppn=1" >> $output_file
 	echo "#PBS -N drew_linsley_fmri_connectivity" >> $output_file
 	echo $(printf "#PBS -o /home2/linsleyd/slab_projects/pbs_output/output_%i" "$i") >> $output_file
 	echo $(printf "#PBS -e /home2/linsleyd/slab_projects/pbs_output/error_%i" "$i") >> $output_file
 	echo "#PBS -m abe -M drewlinsley@gmail.com" >> $output_file
 
+	echo "module load base" >> $output_file
 	echo "module load imagemagick/6.9.1.7" >> $output_file
 	echo "module load hdf5/1.8.15" >> $output_file
 	echo "module load blas/1.0" >> $output_file
