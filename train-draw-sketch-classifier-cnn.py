@@ -164,7 +164,7 @@ def lr_tag(value):
 
 lr_str = lr_tag(learning_rate)
 
-subdir = name + "-" + time.strftime("%Y%m%d-%H%M%S");
+subdir = name + "-cnn-" + time.strftime("%Y%m%d-%H%M%S");
 longname = "%s-%s-t%d-enc%d-dec%d-z%d-lr%s" % (dataset, attention_tag, n_iter, enc_dim, dec_dim, z_dim, lr_str)
 pickle_file = subdir + "/" + longname + ".pkl"
 
@@ -203,26 +203,37 @@ encoder_rnn = LSTM(dim=enc_dim, name="RNN_enc", **rnninits)
 #/////
 #Insert a conv/deconv before the encoder MLP? -- add normalization at some point
 act = Rectifier()
+pool_layer = MaxPooling(
+            pooling_size=(2, 2),
+            step=(2,2),
+            padding=(0,0))
+
 encoder_cnn = ConvolutionalSequence(
     [
         Convolutional(
-            filter_size=(3, 3),
-            num_filters=30,
-            border_mode='half',
-            step=(1,1),
-            name='layer_1'),
+                    filter_size=(3, 3),
+                    num_filters=64,
+                    border_mode='half',
+                    step=(1,1),
+                    name='C1'),
         act,
-        MaxPooling(
-            pooling_size=(2, 2),
-            step=(1,1),
-            padding=(1,1))#,
-        #Convolutional(
-        #    filter_size=(3, 3),
-        #    num_filters=20,
-        #    name='layer_2'),
-        #act,
-        #MaxPooling(pooling_size=(2, 2)),
-        #ConvolutionalTranspose?
+        pool_layer,
+        Convolutional(
+                    filter_size=(3, 3),
+                    num_filters=128,
+                    border_mode='half',
+                    step=(1,1),
+                    name='C2'),
+        act,
+        pool_layer,
+        Convolutional(
+                    filter_size=(3, 3),
+                    num_filters=256,
+                    border_mode='half',
+                    step=(1,1),
+                    name='C3'),
+        act,
+        pool_layer
     ],
     num_channels=1,
     image_size=(read_N, read_N),
@@ -231,7 +242,7 @@ encoder_cnn = ConvolutionalSequence(
 dummy_cnn = encoder_cnn
 dummy_cnn.initialize()
 cnn_output_dim = np.prod(dummy_cnn.get_dim('output')) #Take product now so that you can flatten later
-cnn_mlp = MLP([Identity()], [cnn_output_dim,enc_dim],name="CNN_encoder", **inits) #convert CNN feature maps to encoder_mlp dimensions
+cnn_mlp = MLP([Identity()], [cnn_output_dim, read_N ** 2],name="CNN_encoder", **inits) #convert CNN feature maps to encoder_mlp dimensions
 flattener = Flattener()
 #/////
 encoder_mlp = MLP([Identity()], [(read_dim+enc_dim), 4*enc_dim], name="LSTM_encoder", **inits) #260 read_dim+dec_dim
