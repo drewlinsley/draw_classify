@@ -303,6 +303,7 @@ class DrawClassifierModel(BaseRecurrent, Initializable, Random):
         self.reader = reader
         self.encoder_cnn = encoder_cnn 
         self.cnn_mlp = cnn_mlp
+        #self.decoder_cnn = decoder_cnn 
         self.encoder_mlp = encoder_mlp 
         self.encoder_rnn = encoder_rnn
         self.sampler = sampler
@@ -310,7 +311,8 @@ class DrawClassifierModel(BaseRecurrent, Initializable, Random):
         self.classifier = classifier
         self.flattener = flattener
 
-        self.children = [self.reader, self.encoder_cnn, self.cnn_mlp, self.encoder_mlp, self.encoder_rnn,
+        self.children = [self.reader, self.encoder_cnn, self.cnn_mlp, 
+        self.encoder_mlp, self.encoder_rnn,
         self.sampler, self.writer, self.classifier, self.flattener]
  
     def get_dim(self, name):
@@ -347,14 +349,30 @@ class DrawClassifierModel(BaseRecurrent, Initializable, Random):
         w_r_features = self.encoder_cnn.apply(w_r) #pass through cnn
         flat_w_r_features = self.flattener.apply(w_r_features) #flatten to an array
         cnn_features = self.cnn_mlp.apply(flat_w_r_features) #transform to w_hat size
-        #cnn_features = T.transpose(cnn_features)
-        r = T.concatenate([cnn_features, w_hat], axis=1)
+        
+        #Reshape error image patch to a CNN
+        batch_size = w_hat.shape[0]
+        what_r = w_hat.reshape((batch_size, self.reader.channels, self.reader.N, self.reader.N)) #reshape to fit CNN
+        what_r_features = self.encoder_cnn.apply(what_r) #pass through cnn
+        flat_what_r_features = self.flattener.apply(what_r_features) #flatten to an array
+        what_cnn_features = self.cnn_mlp.apply(flat_what_r_features) #transform to w_hat size
+
+        #Concatenate w and what features
+        r = T.concatenate([cnn_features, what_cnn_features], axis=1)
         #///
         #---Encode the attention sequence        
         concat_seq = T.concatenate([r, h_enc], axis=1)
         i_enc = self.encoder_mlp.apply(concat_seq)
         h_enc, c_enc = self.encoder_rnn.apply(states=h_enc, cells=c_enc, inputs=i_enc, iterate=False)
+        
+        # Use a deconv layer mirroring the conv above 
+        #deconv_images = self.decoder_cnn.apply(h_enc) #pass through cnn
 
+
+
+        # Add a decoder since we're using convolution in the encoding stage
+        #i_dec = self.decoder_mlp.apply(h_enc)
+        #h_dec, c_dec = self.decoder_rnn.apply(states=h_dec, cells=c_dec, inputs=i_dec, iterate=False)
         #---For the generative model
         #z, kl = self.sampler.sample(h_enc, u)
         #i_dec = self.decoder_mlp.apply(h_enc)
@@ -362,6 +380,7 @@ class DrawClassifierModel(BaseRecurrent, Initializable, Random):
         #---Update the canvas 
         #c = c + self.writer.apply(h_dec)
         c = c + self.writer.apply(h_enc) #Was working...
+        #c = c + self.writer.apply(deconv_images) #Was working...
 
         return c, h_enc, c_enc, center_y, center_x, delta, r
 

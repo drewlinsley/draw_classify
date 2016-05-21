@@ -26,6 +26,8 @@ from fuel.transformers import Flatten
 
 from blocks.algorithms import GradientDescent, CompositeRule, StepClipping, RMSProp, Adam
 from blocks.bricks import Tanh, Identity, Softmax, Rectifier, Logistic
+from blocks.bricks.bn import (BatchNormalization, BatchNormalizedMLP,
+                              SpatialBatchNormalization)
 from blocks.bricks.cost import BinaryCrossEntropy, CategoricalCrossEntropy, MisclassificationRate, SquaredError
 from blocks.bricks.recurrent import SimpleRecurrent, LSTM
 from blocks.initialization import Constant, IsotropicGaussian, Orthogonal 
@@ -199,9 +201,7 @@ print()
 #draw.initialize()
 
 
-encoder_rnn = LSTM(dim=enc_dim, name="RNN_enc", **rnninits)
-#/////
-#Insert a conv/deconv before the encoder MLP? -- add normalization at some point
+#///// 1. Convolution
 act = Rectifier()
 pool_layer = MaxPooling(
             pooling_size=(2, 2),
@@ -216,6 +216,7 @@ encoder_cnn = ConvolutionalSequence(
                     border_mode='half',
                     step=(1,1),
                     name='C1'),
+        SpatialBatchNormalization(name='batch_norm1'),
         act,
         pool_layer,
         Convolutional(
@@ -224,6 +225,7 @@ encoder_cnn = ConvolutionalSequence(
                     border_mode='half',
                     step=(1,1),
                     name='C2'),
+        SpatialBatchNormalization(name='batch_norm2'),
         act,
         pool_layer,
         Convolutional(
@@ -233,18 +235,65 @@ encoder_cnn = ConvolutionalSequence(
                     step=(1,1),
                     name='C3'),
         act,
+        SpatialBatchNormalization(name='batch_norm3'),
         pool_layer
     ],
     num_channels=1,
     image_size=(read_N, read_N),
+    name='encoder_cnn',
     **inits)
 
 dummy_cnn = encoder_cnn
 dummy_cnn.initialize()
 cnn_output_dim = np.prod(dummy_cnn.get_dim('output')) #Take product now so that you can flatten later
 cnn_mlp = MLP([Identity()], [cnn_output_dim, read_N ** 2],name="CNN_encoder", **inits) #convert CNN feature maps to encoder_mlp dimensions
-flattener = Flattener()
+
+#///// 2. Deconvolution
+act = Rectifier()
+pool_layer = MaxPooling(
+            pooling_size=(2, 2),
+            step=(2,2),
+            padding=(0,0))
+
+decoder_cnn = ConvolutionalSequence(
+    [
+        ConvolutionalTranspose(
+                    filter_size=(3, 3),
+                    num_filters=256,
+                    border_mode='half',
+                    step=(1,1),
+                    name='C1'),
+        SpatialBatchNormalization(name='batch_norm1'),
+        act,
+        #pool_layer,
+        ConvolutionalTranspose(
+                    filter_size=(3, 3),
+                    num_filters=128,
+                    border_mode='half',
+                    step=(1,1),
+                    name='C2'),
+        SpatialBatchNormalization(name='batch_norm2'),
+        act,
+        #pool_layer,
+        ConvolutionalTranspose(
+                    filter_size=(3, 3),
+                    num_filters=64,
+                    border_mode='half',
+                    step=(1,1),
+                    name='C3'),
+        SpatialBatchNormalization(name='batch_norm3'),
+        Logistic(),
+        #pool_layer
+    ],
+    num_channels=batch_size,
+    image_size=4*enc_dim,
+    name='decoder_cnn',
+    **inits)
+
 #/////
+flattener = Flattener()
+#///// LSTM  and classifier stuff
+encoder_rnn = LSTM(dim=enc_dim, name="RNN_enc", **rnninits)
 encoder_mlp = MLP([Identity()], [(read_dim+enc_dim), 4*enc_dim], name="LSTM_encoder", **inits) #260 read_dim+dec_dim
 #decoder_rnn = LSTM(dim=dec_dim, name="RNN_dec", **rnninits)
 #decoder_mlp = MLP([Identity()], [             dec_dim, 4*dec_dim], name="MLP_dec", **inits)
